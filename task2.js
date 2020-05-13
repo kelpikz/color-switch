@@ -1,12 +1,14 @@
 var canvas = document.getElementById("canvas");
 canvas.style.background = "#2d292d";
 var context = canvas.getContext("2d");
+var ctx = canvas.getContext("2d");
 var rad = Math.PI / 180;
 var colors = ['#13d2fc', '#ffb100', '#9254f4', '#ff3c85'];
 var obs = [];
 var lag =0;
 var collisonDetectionBottom = 0, collisonDetectionTop = 0;
 var smallBalls =[];
+var score = 0;
 
 function newObstrucle( ) {
   var obstrucleSelector =  {
@@ -109,6 +111,7 @@ function colorChange(obstrucle) {                     //change colour when you m
   if(ball.y - (obstrucle.yPosition + 250) < 38 && obstrucle.wheel == true)   {
       if(obstrucle.colorDependant) {
           ball.color = obstrucle.color;
+          obstrucle.colorChecker();
           return false;
       }   else    {
           ball.color = newColor();
@@ -209,6 +212,7 @@ function ballDraw() {
         obs[i].yPosition += (1.25 + Math.pow((lag * 0.04),1.2));
       }
       ball.y += (1.25 + Math.pow((lag * 0.04),1.2));
+      score += (1.25 + Math.pow((lag * 0.04),1.2));
       lag -= (1.25 + Math.pow((lag * 0.04),1.2));
     }
     else {
@@ -216,6 +220,7 @@ function ballDraw() {
         obs[i].yPosition += lag;
       }
       ball.y += lag;
+      score += lag;
       lag = 0;
     }
     obstrucleReinitializer();
@@ -228,17 +233,16 @@ else{
 function newColor () {
   var y = Math.floor(Math.random() * 4  + 0);
   var x = colors[y];
-  console.log( "          " + x  + "               " + y);
   return x;
 
 }
 
 function collisionTest() {
-  if(collisonDetectionTop != 0 && collisonDetectionTop < 243) {
-    if(collisonDetectionTop > (ball.colorCode+1) || collisonDetectionTop < (ball.colorCode-2)){
+  if(collisonDetectionTop != 0 && collisonDetectionTop < 239) {
+    if(collisonDetectionTop > (ball.colorCode+10) || collisonDetectionTop < (ball.colorCode-10)){
       console.log("%c               " , 'background : red;');
       console.log(collisonDetectionTop);
-      ballBurst();
+      // ballBurst();
     }
     else {
       console.log("%c               " , 'background : green;');
@@ -577,6 +581,17 @@ var threeCircles = {
     this.colors[0] = this.color;
     console.log(this.color + "      " + this.name);
   },
+  
+  colorChecker :function () {
+    if(this.colors[0] != this.color){
+      for(var z =0; z<4; z++) {
+        if(this.colors[z] == this.color) { 
+          this.colors[z] = this.colors[0];
+        }
+      }
+      this.colors[0] = this.color;
+    }
+  },
   movement : function () {
       context.lineWidth = 14;
       context.lineCap='square';
@@ -652,6 +667,16 @@ var twoCircles = {
     this.colors[1] = this.color;
     console.log(this.color + "      " + this.name);
   },
+  colorChecker :function () {
+    if(this.colors[0] != this.color){
+      for(var z =0; z<4; z++) {
+        if(this.colors[z] == this.color) { 
+          this.colors[z] = this.colors[1];
+        }
+      }
+      this.colors[1] = this.color;
+    }
+  },
   movement : function() {
     context.lineWidth = 16;
     context.lineCap='square';
@@ -717,6 +742,16 @@ var triangles = {
     this.colors[0] = this.color;
     console.log(this.color + "      " + this.name);
   },
+  colorChecker :function () {
+    if(this.colors[0] != this.color){
+      for(var z =0; z<4; z++) {
+        if(this.colors[z] == this.color) { 
+          this.colors[z] = this.colors[0];
+        }
+      }
+      this.colors[0] = this.color;
+    }
+  },
   movement : function () {
       context.lineWidth= 18;
       context.lineCap='round';
@@ -749,6 +784,8 @@ function run() {
   ballDraw();
   ball.movement();
   pauseMenu();
+  starCounter();
+  highScore();
   for(var i =0; i< 4; i ++) {
     obs[i].movement();
   }
@@ -779,11 +816,50 @@ function pauseMenu() {
   context.lineTo(27, 35);
   context.stroke();    
 }
-pauseMenu();
 
-// setInterval(() => {
-//   console.log("*************************************");
-//   for(var i = 0; i< 4; i++) {
-//     console.log("the yPosition of " + (i+1) + " is " + obs[i].yPosition);
-//   }
-// }, 1500);
+function starCounter() {
+  //try to add gradient
+  context.beginPath();
+  context.moveTo(382 + 7 * Math.cos( rad * 18), 20 + 7 * Math.sin(rad * 18));
+  for( var i = 54; i <  360; i += 72)  {
+  context.lineTo(382 + 10 * Math.cos( rad * i), 20 + 10 * Math.sin(rad * i));
+  context.lineTo(382 + 6.25 * Math.cos( rad * (i + 36)), 20 + 6.25 * Math.sin(rad * (i + 36)));
+  }
+  context.fillStyle='white';
+  context.fill();
+  
+  var y = localStorage.getItem('star_count');
+  context.textBaseline='hanging';
+  context.font='20px Major Mono Display, monospace';
+  context.textAlign='end';
+  if(y != null){
+  context.fillText(y, 370, 12);
+  }
+  else{
+    context.fillText('0', 370, 12);
+  }
+}
+
+function highScore() {
+  var highscore = localStorage.getItem("highscore");
+  context.fillStyle='white';
+  context.textAlign='start';
+  context.font='13px Major Mono Display, monospace';
+  context.fillText('highscore', 5, 580);
+  if(highscore == null){
+    context.fillText('0', 30, 562);
+    localStorage.setItem('highscore', '0');
+  }
+  else {
+    context.fillText(highscore, 30, 562);
+  }
+  context.textAlign='end';
+  var x = Math.round(score);
+  x /= 10;
+  context.fillText('score', 390, 580);
+  context.textAlign='center';
+  context.fillText(x.toString(), 365, 560);
+  if(x > Number(highscore)){
+    localStorage.setItem('highscore', x.toString());
+  }
+}
