@@ -1,7 +1,11 @@
 var canvas = document.getElementById("canvas");
-canvas.style.background = "#2d292d";
+canvas.style.background = "rgba(45, 41, 45, 0.7)";
 var context = canvas.getContext("2d");
 var ctx = canvas.getContext("2d");
+var difficulty = 0;  // increases every time an obstrucle is re initialized
+document.body.style.backgroundImage = 'url("f4oxj8q9q5v41.jpg")';
+document.body.style.backgroundSize = 'cover';
+var point = new Audio("star.mp3");
 var rad = Math.PI / 180;
 var colors = ['#13d2fc', '#ffb100', '#9254f4', '#ff3c85'];
 var obs = [];
@@ -9,6 +13,24 @@ var lag =0;
 var collisonDetectionBottom = 0, collisonDetectionTop = 0;
 var smallBalls =[];
 var score = 0;
+var resume = true;
+var dead = false;
+var clickX = 0, clickY =0;
+
+var colorball = false;
+var colorBallTimer = 0;
+var colorBallTimerReset;
+
+var speedball = false;
+var speedBallTimer = 0;
+var speedballReset = 0;
+var speedBallTimerReset;
+
+var click = 0;
+//TOKENS
+reviveToken = 0;
+ballColorToken = 0;
+ballSpeedToken = 0;
 
 function newObstrucle( ) {
   var obstrucleSelector =  {
@@ -44,7 +66,6 @@ function hit() {
   }
 }
 
-// myObstrucle = obsturcles.newObstrucle();
 function initialObstrucles() {
   for(var i =0; i< 4; i++)  {
     obs[i] = newObstrucle();
@@ -61,6 +82,7 @@ function obstrucleReinitializer() {
   
   for(var i =0; i < 4; i++) {
     if(obs[i].yPosition >= 1600) {
+      difficulty += 0.1;
       obs[i] = newObstrucle();
       // console.log("%c obs " + (i + 1) + " has been reset", 'background: red; color: white');
       if(obs[i].colorDependant){
@@ -73,6 +95,7 @@ function obstrucleReinitializer() {
 function star(xPosition, yPosition, x) {  
   if(x) {
     if(ball.y - yPosition < 10 ){
+      point.play();
       var y = localStorage.getItem('star_count');
       y = Number(y);
       if( y == 'null') {
@@ -111,7 +134,6 @@ function colorChange(obstrucle) {                     //change colour when you m
   if(ball.y - (obstrucle.yPosition + 250) < 38 && obstrucle.wheel == true)   {
       if(obstrucle.colorDependant) {
           ball.color = obstrucle.color;
-          obstrucle.colorChecker();
           return false;
       }   else    {
           ball.color = newColor();
@@ -181,12 +203,15 @@ function smallBallMovement() {
     smallBalls[i].vy += 0.35;
     smallBalls[i].x += smallBalls[i].vx;
   }
+  var k = 0;
   for(i=0;i<12;i++){
-    if(smallBalls[i].y < 600) {
-      break;
+    if(smallBalls[i].y < 700) {
+      k =1;
     }
   }
-  if(i=12) {
+  if(k == 0) {
+    debugger;
+    dead = true;
     //bring  end game bar
   }
 }
@@ -242,7 +267,9 @@ function collisionTest() {
     if(collisonDetectionTop > (ball.colorCode+10) || collisonDetectionTop < (ball.colorCode-10)){
       console.log("%c               " , 'background : red;');
       console.log(collisonDetectionTop);
-      // ballBurst();
+      if(!colorball) {
+        ballBurst();
+      }
     }
     else {
       console.log("%c               " , 'background : green;');
@@ -259,14 +286,27 @@ var ball = {
   burst: false,
   color : newColor(),
   colorCode : 0,
+  rotator : 0,
   movement: function () {
       if(this.burst == false) {
-      context.beginPath();
-      context.arc(this.x, this.y, this.radius, 0, rad * 360, true);
-      context.closePath();
-      context.fillStyle = this.color;
-      context.fill();
-      hit();
+      if(!colorball) {
+        context.beginPath();
+        context.arc(this.x, this.y, this.radius, 0, rad * 360, true);
+        context.closePath();
+        context.fillStyle = this.color;
+        context.fill();
+        hit();
+      }
+      else {
+        for(var i =0; i<360; i += 90, this.rotator += 0.85) {
+          context.beginPath();
+          context.moveTo(this.x, this.y);
+          context.arc(this.x, this.y, this.radius, rad * (i+ this.rotator), rad * (i + 90 + this.rotator));
+          context.closePath();
+          context.fillStyle = colors[i / 90];
+          context.fill();  
+      }
+      }
     }
   },
 
@@ -322,7 +362,7 @@ var circle = {
         context.strokeStyle = "#ff3c85"; //pink  255, 0, 191
         context.arc(this.xPosition, this.yPosition, 90, rad * (this.i + 270), rad * (this.i + 360));
         context.stroke();
-        this.i += 1.5;
+        this.i += 1.5 + difficulty;
 
         if(this.i >359) { this.i =0 };
 
@@ -355,7 +395,7 @@ var square = {
   
   context.lineWidth = 20;
   context.lineCap = "round";
-  for(var j =0; j< 360; j += 90, this.i += 0.45)  {
+  for(var j =0; j< 360; j += 90, this.i += (0.45 + (difficulty / 4)))  {
       context.strokeStyle = colors[j /90];
       context.beginPath();
       context.moveTo(
@@ -422,7 +462,7 @@ var rotatingLines = {
           context.fillStyle= colors[ j / 90];
           context.fill();
       }
-      this.i += 1.75;
+      this.i += 1.75 + difficulty;
       
       if(this.i >359) { this.i =0};
 
@@ -453,7 +493,7 @@ var rotatingCircles = {
   movement : function () {
     context.fillStyle='red';
     // debugger;
-    for(this.j=0; this.j < 24 ; this.i += 15.05 , this.j ++) {
+    for(this.j=0; this.j < 24 ; this.i += (15.05 +(difficulty /20) ), this.j ++) {
         context.beginPath();
         context.arc(
         this.xPosition + 90 * Math.cos(rad * this.i),
@@ -540,7 +580,7 @@ var diamond = {
         this.yPosition + 120 * Math.sin(rad * this.i)
       );
       context.stroke();
-      this.i += 1.5;
+      this.i += 1.5 + difficulty;
       if(this.i >359) { this.i =0};
       this.starHit = this.obstrucleStar(this.xPosition,this.yPosition,this.starHit);
       if(this.wheel) {
@@ -595,7 +635,7 @@ var threeCircles = {
   movement : function () {
       context.lineWidth = 14;
       context.lineCap='square';
-      for(this.k = 0; this.k < 20; this.i += 0.065, this.j -= 0.065, this.k ++) {
+      for(this.k = 0; this.k < 20; this.i += (0.065+(difficulty/20)), this.j -= (0.065 + (difficulty/20)), this.k ++) {
           for(this.key = 0; this.key < 271; this.key += 90) {
               
               context.strokeStyle = this.colors[this.key/90];  
@@ -681,7 +721,7 @@ var twoCircles = {
     context.lineWidth = 16;
     context.lineCap='square';
     
-    for(this.k = 0; this.k < 20; this.i += 0.065, this.j -= 0.065, this.k ++) {
+    for(this.k = 0; this.k < 20; this.i += (0.065+(difficulty/20)), this.j -= (0.065+(difficulty/20)), this.k ++) {
         for(this.key = 0; this.key < 271; this.key += 90) {
             
             context.strokeStyle = this.colors[this.key/90];  
@@ -756,7 +796,7 @@ var triangles = {
       context.lineWidth= 18;
       context.lineCap='round';
       
-      for(var j = 0; j< 360; j+= 120, this.i += 0.65) {
+      for(var j = 0; j< 360; j+= 120, this.i += (0.65+(difficulty/3))) {
           context.beginPath();
           context.moveTo(
               this.xPosition + 120 * Math.cos(rad * (this.i + j)),
@@ -781,40 +821,282 @@ var triangles = {
 };
 
 function run() {
-  ballDraw();
-  ball.movement();
-  pauseMenu();
-  starCounter();
-  highScore();
-  for(var i =0; i< 4; i ++) {
-    obs[i].movement();
+  if(resume && !dead) {
+    ballDraw();
+    ball.movement();
+    pauseMenu();
+    starCounter();
+    highScore();
+    for(var i =0; i< 4; i ++) {
+      obs[i].movement();
+    }
+    collisonDetectionBottom = context.getImageData(ball.x, ball.y + 15, 1, 1).data[1];   //checking data at the bottom of the ball
+    collisonDetectionTop = context.getImageData(ball.x, ball.y - 15, 1, 1).data[1];
   }
-  collisonDetectionBottom = context.getImageData(ball.x, ball.y + 15, 1, 1).data[1];   //checking data at the bottom of the ball
-  collisonDetectionTop = context.getImageData(ball.x, ball.y - 15, 1, 1).data[1];
+  else if (!dead && !resume){
+    pauseMenu();
+  }
+  else {
+    deadMenu();
+  }
+
+  if(colorball) {
+    colorBall();
+  }
+  if(speedball) {
+    speedBall();
+  }
   window.requestAnimationFrame(run);
 }
 
 initialObstrucles();
 run();
 
-
-canvas.addEventListener("click", function () {
-  ball.vy = -7.5;
+canvas.addEventListener("click", function (e) {
+  if(resume || dead || click == 1)  {
+    ball.vy = -7.5;
+  }
+  if(e.layerX < 32 && e.layerY < 40) {
+    console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+    resume? resume = false : resume = true;
+  }
+  clickX = e.layerX;
+  clickY = e.layerY;
+  click  = 1;
 // console.log(ball.vy);
 });
 
+var bgmSound = new Audio("Darude-sandstorm.mp3");
+bgmSound.loop = true;
+addEventListener('click', function () {
+  bgmSound.play();
+})
+
+
+function deadMenu() {
+  var x = clickX;
+  var y = clickY;
+  var star = localStorage.getItem('star_count');
+  star = Number(star);
+
+  context.fillStyle= "rgba(176, 165, 176, 0.001)";
+  context.fillRect(75, 180, canvas.width-150, canvas.height-400);
+  
+  context.lineCap='round';
+  context.lineWidth=50;
+  context.strokeStyle='black';
+  
+  context.beginPath();
+  context.moveTo(125, 280);
+  context.lineTo(275, 280);
+  context.stroke();
+  context.beginPath();
+  context.moveTo(125, 345);
+  context.lineTo(275, 345);
+  context.stroke();
+
+  context.strokeStyle='rgba(176, 165, 176, 0.05)';
+  context.moveTo(120, 215);
+  context.lineTo(280, 215);
+  context.stroke();
+
+  context.fillStyle='white';
+  context.font='20px Major Mono Display, monospace';
+  context.textBaseline='middle';
+  context.textAlign='start';
+  if(reviveToken == 0) {
+    context.fillText("revive", 153, 278);
+  }
+  else if(reviveToken == 1) {
+    context.fillText("100 stars", 130, 278);
+  }
+   else if(reviveToken == 2 && star > 100) {
+    console.log("you can revive");
+    reviveToken = 0;
+    star -= 100;
+    localStorage.setItem('star_count', (star).toString());
+    ball.y = 500;
+    dead = false;
+    collisonDetectionTop = 0;
+    smallBalls = [];
+    ball.burst = false;
+  } else {
+    context.font='15px Major Mono Display, monospace';
+    context.fillText("insufficient stars", 100, 278);
+  }
+  context.font='20px Major Mono Display, monospace'; 
+  context.fillText("restart", 150, 343);
+  context.font='30px Major Mono Display, monospace';
+  context.fillText("you died", 100, 215);
+
+  if(click == 1) {
+    if(x > 100 && x < 300) {
+      if(y > 255 && y < 305) {
+        console.log("revive");
+        if(reviveToken == 0) {
+          reviveToken = 1;
+          click = 0;
+        }
+        else if(reviveToken == 1) {
+          reviveToken = 2;
+          click = 0;
+        }
+        else {
+          reviveToken = 0;
+        }
+        click =0;
+      }
+      if(y > 320 && y < 370) {
+        console.log("restart");
+        location.reload();
+      }
+    }
+  }
+
+
+  // context.strokeStyle='white';
+  // context.lineWidth=2;
+  // context.strokeRect(100, 255, 200, 50);
+  // context.strokeRect(100, 320, 200, 50);
+
+}
+
 
 function pauseMenu() {
-  context.lineCap='round';
-  context.lineWidth=6;
-  context.strokeStyle='white';
-  context.beginPath();
-  context.moveTo(15, 15);
-  context.lineTo(15, 35);
-  context.stroke();
-  context.moveTo(27, 15);
-  context.lineTo(27, 35);
-  context.stroke();    
+  if(resume) {
+    context.lineCap='round';
+    context.lineWidth=6;
+    context.strokeStyle='white';
+    context.beginPath();
+    context.moveTo(15, 15);
+    context.lineTo(15, 35);
+    context.stroke();
+    context.moveTo(27, 15);
+    context.lineTo(27, 35);
+    context.stroke();
+  }    
+  else {
+    var x = clickX;
+    var y = clickY;
+    var star = localStorage.getItem('star_count');
+    star = Number(star);
+    context.fillStyle= "rgba(176, 165, 176, 0.005)";
+    context.fillRect(50, 50, canvas.width-100, canvas.height-100);
+    
+    context.beginPath();
+    context.fillStyle='rgba(6,6,6,0.4)';
+    context.arc(200, 150, 55, rad * 0, rad * 360);
+    context.fill();
+    context.beginPath();
+    context.moveTo(235, 150);
+    context.lineTo(200 + 35 * Math.cos(rad*120), 150 + 35 * Math.sin(rad*120));
+    context.lineTo(200 + 35 * Math.cos(rad*240), 150 + 35 * Math.sin(rad*240));
+    context.closePath();
+    context.fillStyle='rgba(240,240,240,1)';    
+    context.fill();
+
+    context.lineCap='round';
+    context.lineWidth=50;
+    context.strokeStyle='black';
+    
+    context.beginPath();
+    context.moveTo(120, 280);
+    context.lineTo(270, 280);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(120, 355);
+    context.lineTo(270, 355);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(120, 430);
+    context.lineTo(270, 430);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(120, 505);
+    context.lineTo(270, 505);
+    context.stroke();
+    
+    context.fillStyle='white';
+    context.font='20px Major Mono Display, monospace';
+    context.textBaseline='middle';
+    context.textAlign='start';
+    
+    context.fillText("restart", 142, 278);
+    if(ballColorToken == 0) { context.fillText("colour Ball", 115, 353); }
+    else if(ballColorToken == 1) { context.fillText("200 Tokens", 115, 353); }
+    else if(ballColorToken == 2 && star > 200) { 
+      star -= 200;
+      localStorage.setItem('star_count', (star).toString());
+      colorBallTimer = 20;
+      colorball = true;
+      ballColorToken = 0;
+      colorBallTimeChanger();
+      resume = true;
+      console.log("you can color change");
+    } else {
+      context.font='13px Major Mono Display, monospace';
+      context.fillText("insufficient stars", 108, 353);
+      context.font='20px Major Mono Display, monospace';
+    }
+    if(ballSpeedToken == 0) { context.fillText("slow-down", 122, 428); }
+    else if(ballSpeedToken == 1) { context.fillText("150 Tokens", 115, 428); }
+    else if(ballSpeedToken == 2 && star > 150) { 
+      star -= 150;
+      localStorage.setItem('star_count', (star).toString());
+      speedBallTimer = 45;
+      speedball = true;
+      ballSpeedToken = 0;
+      speedballReset = difficulty;
+      difficulty -= 2;
+      speedBallTimeChanger();
+      resume = true;
+      console.log("you can color change");
+    } else {
+      context.font='13px Major Mono Display, monospace';
+      context.fillText("insufficient stars", 108, 428);
+      context.font='20px Major Mono Display, monospace';
+    }
+    context.fillText("two player", 118, 503);
+
+    
+    context.strokeStyle='white';
+    context.lineWidth=2;
+    // context.strokeRect(90, 255, 210, 50);
+    // context.strokeRect(90, 330, 210, 50);
+    // context.strokeRect(90, 405, 210, 50);    
+    // context.strokeRect(90, 480, 210, 50);    
+    
+    if(click == 1) {
+      var resumeButton = (((x - 200) ** 2) + ((y - 150) ** 2) - 3025);
+      if(resumeButton <= 0){
+        console.log("reusme Button");
+        resume = true;
+      }
+      if(x > 90 && x < 300) {
+        if(y > 255 && y < 305) {
+        console.log("restart");
+          location.reload();
+        }
+        if(y > 330 && y < 380) {
+          console.log("color ball");
+          if(ballColorToken == 0) {ballColorToken ++ }
+          else if(ballColorToken == 1) {ballColorToken ++ }
+          else { ballColorToken = 0 }
+          
+        } 
+        if(y > 405 && y < 455) {
+          console.log("slow_down");
+          if(ballSpeedToken == 0) {ballSpeedToken ++ }
+          else if(ballSpeedToken == 1) {ballSpeedToken ++ }
+          else { ballSpeedToken = 0 }
+        }
+        if(y > 480 && y < 530) {
+          console.log("2 player");
+        }
+      }
+    click = 0;
+    }
+  }
 }
 
 function starCounter() {
@@ -861,5 +1143,46 @@ function highScore() {
   context.fillText(x.toString(), 365, 560);
   if(x > Number(highscore)){
     localStorage.setItem('highscore', x.toString());
+  }
+}
+
+function colorBallTimeChanger() {
+  colorBallTimerReset= setInterval(() => {
+    colorBallTimer --;
+  }, 1000);
+}
+
+function colorBall() {
+  if(colorball) {
+    context.fillStyle='white';
+    context.font='40px Major Mono Display, monospace';
+    context.textBaseline='middle';
+    context.textAlign='center';
+    context.fillText(colorBallTimer, 200, 450);
+    if(colorBallTimer < 1) {
+      clearTimeout(colorBallTimerReset);
+      colorball = false;
+    }
+  }
+}
+
+function speedBallTimeChanger() {
+  speedBallTimerReset= setInterval(() => {
+    speedBallTimer --;
+  }, 1000);
+}
+
+function speedBall() {
+  if(speedball) {
+    context.fillStyle='white';
+    context.font='40px Major Mono Display, monospace';
+    context.textBaseline='middle';
+    context.textAlign='center';
+    context.fillText(speedBallTimer, 200, 450);
+    if(speedBallTimer < 1) {
+      clearTimeout(speedBallTimerReset);
+      speedball = false;
+      difficulty = speedballReset;
+    }
   }
 }
